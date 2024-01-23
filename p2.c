@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
   if (argc > 3) {
     NGRID = atoi(argv[1]);
     BLOCKING = atoi(argv[2]);
-    GATHER_T = atoi(argv[2]);
+    GATHER_T = atoi(argv[3]);
     if (!((BLOCKING == 0 || BLOCKING == 1) &&
           (GATHER_T == 0 || GATHER_T == 1))) {
       printf("Please specify blocking and gather values as 0 or 1\n");
