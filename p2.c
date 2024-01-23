@@ -1,9 +1,8 @@
 // bthelmer Braden T Helmer
-//
+// cwkavana Colin W Kavanaugh
 //
 //
 // CSC 548 Parallel Systems HW1 Problem 2
-#include <assert.h>
 #include <math.h>
 #include <mpi.h>
 #include <stdio.h>
@@ -37,6 +36,23 @@ int main(int argc, char *argv[]) {
     printf("Please specify grid points, blocking, and gather type values.\n");
     exit(0);
   }
+
+  //MPI initilization requierments
+  /* process information */
+  int   numproc, rank, len;
+  /* current process hostname */
+  char  hostname[MPI_MAX_PROCESSOR_NAME];
+  /* initialize MPI */
+  MPI_Init(&argc, &argv);
+  /* get the number of procs in the comm */
+  MPI_Comm_size(MPI_COMM_WORLD, &numproc);
+  /* get my rank in the comm */
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  /* get some information about the host I'm running on */
+  MPI_Get_processor_name(hostname, &len);
+
+  
+
   // loop index
   int i;
 
@@ -99,6 +115,8 @@ int main(int argc, char *argv[]) {
   free(yc);
   free(dyc);
 
+  MPI_Finalize();
+  
   return 0;
 }
 
