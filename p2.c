@@ -37,11 +37,11 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
-  //MPI initilization requierments
+  // MPI initilization requierments
   /* process information */
-  int   numproc, rank, len;
+  int numproc, rank, len;
   /* current process hostname */
-  char  hostname[MPI_MAX_PROCESSOR_NAME];
+  char hostname[MPI_MAX_PROCESSOR_NAME];
   /* initialize MPI */
   MPI_Init(&argc, &argv);
   /* get the number of procs in the comm */
@@ -51,20 +51,18 @@ int main(int argc, char *argv[]) {
   /* get some information about the host I'm running on */
   MPI_Get_processor_name(hostname, &len);
 
-  
-
   // loop index
-  int i;
+  int loop_idx;
 
   // domain array and step size
-  double *xc = (double *)malloc(sizeof(double) * (NGRID + 2));
-  double dx;
+  double *domain_array = (double *)malloc(sizeof(double) * (NGRID + 2));
+  double step_size;
 
   // function array and derivative
   // the size will be dependent on the
   // number of processors used
   // to the program
-  double *yc, *dyc;
+  double *function_array, *derivative_array;
 
   //"real" grid indices
   int imin, imax;
@@ -73,31 +71,32 @@ int main(int argc, char *argv[]) {
   imax = NGRID;
 
   // construct grid
-  for (i = 1; i <= NGRID; i++) {
-    xc[i] = XI + (XF - XI) * (double)(i - 1) / (double)(NGRID - 1);
+  for (loop_idx = 1; loop_idx <= NGRID; loop_idx++) {
+    domain_array[loop_idx] =
+        XI + (XF - XI) * (double)(loop_idx - 1) / (double)(NGRID - 1);
   }
   // step size and boundary points
-  dx = xc[2] - xc[1];
-  xc[0] = xc[1] - dx;
-  xc[NGRID + 1] = xc[NGRID] + dx;
+  step_size = domain_array[2] - domain_array[1];
+  domain_array[0] = domain_array[1] - step_size;
+  domain_array[NGRID + 1] = domain_array[NGRID] + step_size;
 
   // allocate function arrays
-  yc = (double *)malloc((NGRID + 2) * sizeof(double));
-  dyc = (double *)malloc((NGRID + 2) * sizeof(double));
+  function_array = (double *)malloc((NGRID + 2) * sizeof(double));
+  derivative_array = (double *)malloc((NGRID + 2) * sizeof(double));
 
   // define the function
-  for (i = imin; i <= imax; i++) {
-    yc[i] = fn(xc[i]);
+  for (loop_idx = imin; loop_idx <= imax; loop_idx++) {
+    function_array[loop_idx] = fn(domain_array[loop_idx]);
   }
 
   // set boundary values
-  yc[imin - 1] = 0.0;
-  yc[imax + 1] = 0.0;
+  function_array[imin - 1] = 0.0;
+  function_array[imax + 1] = 0.0;
 
   // NB: boundary values of the whole domain
   // should be set
-  yc[0] = fn(xc[0]);
-  yc[imax + 1] = fn(xc[NGRID + 1]);
+  function_array[0] = fn(domain_array[0]);
+  function_array[imax + 1] = fn(domain_array[NGRID + 1]);
 
   // compute the derivative using first-order finite differencing
   //
@@ -105,15 +104,18 @@ int main(int argc, char *argv[]) {
   //  ---- f(x) ~ --------------------
   //   dx                 2 * dx
   //
-  for (i = imin; i <= imax; i++) {
-    dyc[i] = (yc[i + 1] - yc[i - 1]) / (2.0 * dx);
+  for (loop_idx = imin; loop_idx <= imax; loop_idx++) {
+    derivative_array[loop_idx] =
+        (function_array[loop_idx + 1] - function_array[loop_idx - 1]) /
+        (2.0 * step_size);
   }
 
-  print_function_data(NGRID, &xc[1], &yc[1], &dyc[1]);
+  print_function_data(NGRID, &domain_array[1], &function_array[1],
+                      &derivative_array[1]);
 
   // free allocated memory
-  free(yc);
-  free(dyc);
+  free(function_array);
+  free(derivative_array);
 
   return 0;
 }
