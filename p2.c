@@ -3,6 +3,7 @@
 //
 //
 // CSC 548 Parallel Systems HW1 Problem 2
+#include <assert.h>
 #include <math.h>
 #include <mpi.h>
 #include <stdio.h>
@@ -21,10 +22,19 @@ int main(int, char **);
 int main(int argc, char *argv[]) {
 
   int NGRID;
-  if (argc > 1)
+  int BLOCKING;
+  int GATHER_T;
+  if (argc > 3) {
     NGRID = atoi(argv[1]);
-  else {
-    printf("Please specify the number of grid points.\n");
+    BLOCKING = atoi(argv[2]);
+    GATHER_T = atoi(argv[2]);
+    if (!((BLOCKING == 0 || BLOCKING == 1) &&
+          (GATHER_T == 0 || GATHER_T == 1))) {
+      printf("Please specify blocking and gather values as 0 or 1\n");
+      exit(0);
+    }
+  } else {
+    printf("Please specify grid points, blocking, and gather type values.\n");
     exit(0);
   }
   // loop index
