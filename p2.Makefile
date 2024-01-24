@@ -7,3 +7,6 @@ p2: $(SRC)
 
 serial: p2_serial.c
 	mpicc -lm -O3 -o p2_serial p2_serial.c p2_func.c
+
+clean:
+	rm p2
