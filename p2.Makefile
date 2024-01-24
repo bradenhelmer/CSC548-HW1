@@ -1,6 +1,6 @@
 SRC := p2.c p2_func.c
 
-all: p2 
+all: clean run
 
 p2: $(SRC)
 	mpicc -lm -O3 -o p2 p2.c p2_func.c
@@ -12,4 +12,4 @@ run: p2
 	prun ./p2 100 0 0
 
 clean:
-	rm p2
+	rm -f p2
