@@ -1,5 +1,5 @@
 // bthelmer Braden T Helmer
-//
+// hkambha Harish Kambhampaty
 //
 //
 // CSC 548 Parallel Systems HW1 Problem 2
@@ -21,24 +21,30 @@ double fn(double);
 void print_function_data(int, double *, double *, double *);
 int main(int, char **);
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 
   int NGRID;
   int BLOCKING;
   int GATHER_T;
-  if (argc > 3) {
+  if (argc > 3)
+  {
     NGRID = atoi(argv[1]);
     BLOCKING = atoi(argv[2]);
     GATHER_T = atoi(argv[3]);
-    if (!(BLOCKING == 0 || BLOCKING == 1)) {
+    if (!(BLOCKING == 0 || BLOCKING == 1))
+    {
       printf("Blocking value must be 0 or 1\n");
       exit(0);
     }
-    if (!(GATHER_T == 0 || GATHER_T == 1)) {
+    if (!(GATHER_T == 0 || GATHER_T == 1))
+    {
       printf("Gather type value must be 0 or 1\n");
       exit(0);
     }
-  } else {
+  }
+  else
+  {
     printf("Please specify grid points, blocking, and gather type values.\n");
     exit(0);
   }
@@ -71,7 +77,8 @@ int main(int argc, char *argv[]) {
 
   // Construct domain and function slice values
   int loop_idx;
-  for (loop_idx = slice_min; loop_idx <= slice_max; loop_idx++) {
+  for (loop_idx = slice_min; loop_idx <= slice_max; loop_idx++)
+  {
     // Since the slice values are different for each process, we need calcualte
     // the actual slice index relative to the rank.
     int actual_index = loop_idx - (rank * slice_size) - 1;
@@ -86,7 +93,6 @@ int main(int argc, char *argv[]) {
 
   // Alloc derivative slice
   dy_slice = (double *)malloc(sizeof(double) * slice_size);
-
 
   // DERIVATIVE CALCULATIONS
   //
@@ -103,12 +109,62 @@ int main(int argc, char *argv[]) {
   /* print_y_data(NGRID, &x_array[1], &y_array[1], */
   /*                     &dy_array[1]); */
 
-
   // GATHERING CODE HERE FOR ROOT PROC
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  
+
   // Declare full grid arrays to be gathered from proc 0
   double *x_vec, *y_vec, *dy_vec;
+
+  if (rank == 0)
+  {
+    // Root proc
+
+    // define counts of recvs
+    MPI_Count recvcounts[numproc];
+    // define displacemets
+    MPI_Aint displs[numproc];
+    // set values of recvcounts and displs
+    for (int rank_iter = 0; rank_iter < numproc; rank_iter++)
+    {
+      recvcounts[rank_iter] = slice_size;
+      displs[rank_iter] = rank_iter * slice_size + 1;
+    }
+    if (BLOCKING)
+    {
+      MPI_Gatherv(x_slice , slice_size, MPI_DOUBLE, x_vec , recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD);
+      MPI_Gatherv(y_slice , slice_size, MPI_DOUBLE, y_vec , recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD);
+      MPI_Gatherv(dy_slice, slice_size, MPI_DOUBLE, dy_vec, recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD);
+    }
+    else
+    {
+      // Request handler
+      MPI_Request requests[3];
+      MPI_Igatherv(x_slice  , slice_size, MPI_DOUBLE, x_vec , recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[0]);
+      MPI_Igatherv(y_slice  , slice_size, MPI_DOUBLE, y_vec , recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[1]);
+      MPI_Igatherv(dy_slice , slice_size, MPI_DOUBLE, dy_vec, recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[2]);
+      MPI_Waitall(3, requests, MPI_STATUS_IGNORE);
+    }
+  }
+  else
+  {
+    // Non-root proc
+
+    if (BLOCKING)
+    {
+      MPI_Gatherv(x_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD);
+      MPI_Gatherv(y_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD);
+      MPI_Gatherv(dy_slice, slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD);
+    }
+    else
+    {
+      // Request handler
+      MPI_Request requests[3];
+      MPI_Igatherv(x_slice  , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[0]);
+      MPI_Igatherv(y_slice  , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[1]);
+      MPI_Igatherv(dy_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[2]);
+      MPI_Waitall(3, requests, MPI_STATUS_IGNORE);
+    }
+  }
 
   // Free proc slice arrays
   free(x_slice);
@@ -121,7 +177,8 @@ int main(int argc, char *argv[]) {
 }
 
 // prints out the y and its dy to a file
-void print_y_data(int np, double *x, double *y, double *dydx) {
+void print_y_data(int np, double *x, double *y, double *dydx)
+{
   int i;
 
   char filename[1024];
@@ -129,7 +186,8 @@ void print_y_data(int np, double *x, double *y, double *dydx) {
 
   FILE *fp = fopen(filename, "w");
 
-  for (i = 0; i < np; i++) {
+  for (i = 0; i < np; i++)
+  {
     fprintf(fp, "%f %f %f\n", x[i], y[i], dydx[i]);
   }
 
