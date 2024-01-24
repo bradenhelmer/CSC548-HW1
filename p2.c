@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
       recvcounts[rank_iter] = slice_size;
       displs[rank_iter] = rank_iter * slice_size + 1;
     }
-    if (BLOCKING)
+    if (!BLOCKING)
     {
       MPI_Gatherv(x_slice , slice_size, MPI_DOUBLE, x_vec , recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD);
       MPI_Gatherv(y_slice , slice_size, MPI_DOUBLE, y_vec , recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD);
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
   {
     // Non-root proc
 
-    if (BLOCKING)
+    if (!BLOCKING)
     {
       MPI_Gatherv(x_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD);
       MPI_Gatherv(y_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD);
