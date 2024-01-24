@@ -8,9 +8,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* first vec point */
+/* first grid point */
 #define XI 1.0
-/* last vec point */
+/* last grid point */
 #define XF 100.0
 
 // Root Proc
