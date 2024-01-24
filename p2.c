@@ -18,7 +18,7 @@
 
 /* function declarations */
 double fn(double);
-void print_function_data(int, double *, double *, double *);
+void print_y_data(int, double *, double *, double *);
 int main(int, char **);
 
 int main(int argc, char *argv[])
@@ -114,14 +114,14 @@ int main(int argc, char *argv[])
 
   // MESSAGE PASSING BOUNDARY VALUES
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  
+
   // Blocking Sends
   if (!BLOCKING) {
     if (rank < (numproc - 1)) {
       // Forward send
       MPI_Send(y_slice + slice_size, 1, MPI_DOUBLE, rank + 1, 0,
                MPI_COMM_WORLD);
-      // Recieve from next
+      // Receive from next
       MPI_Recv(y_slice + slice_size + 1, 1, MPI_DOUBLE, rank + 1, 0,
                MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
       // Forward send
       MPI_Isend(y_slice + slice_size, 1, MPI_DOUBLE, rank + 1, 0,
                 MPI_COMM_WORLD, &requests[0]);
-      // Recieve from next
+      // Receive from next
       MPI_Irecv(y_slice + slice_size + 1, 1, MPI_DOUBLE, rank + 1, 0,
                 MPI_COMM_WORLD, &requests[1]);
 	  MPI_Waitall(2, requests, MPI_STATUS_IGNORE);
@@ -166,60 +166,88 @@ int main(int argc, char *argv[])
 
   // GATHERING CODE HERE FOR ROOT PROC
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  
   // Declare full grid arrays to be gathered from proc 0
   double *x_vec, *y_vec, *dy_vec;
 
-  /* if (rank == 0) */
-  /* { */
-  /*   // Root proc */
+  if (rank == 0)
+  {
+    // Root proc
 
-  /*   // define counts of recvs */
-  /*   MPI_Count recvcounts[numproc]; */
-  /*   // define displacemets */
-  /*   MPI_Aint displs[numproc]; */
-  /*   // set values of recvcounts and displs */
-  /*   for (int rank_iter = 0; rank_iter < numproc; rank_iter++) */
-  /*   { */
-  /*     recvcounts[rank_iter] = slice_size; */
-  /*     displs[rank_iter] = rank_iter * slice_size + 1; */
-  /*   } */
-  /*   if (!BLOCKING) */
-  /*   { */
-  /*     MPI_Gatherv(x_slice , slice_size, MPI_DOUBLE, x_vec , recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD); */
-  /*     MPI_Gatherv(y_slice , slice_size, MPI_DOUBLE, y_vec , recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD); */
-  /*     MPI_Gatherv(dy_slice, slice_size, MPI_DOUBLE, dy_vec, recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD); */
-  /*   } */
-  /*   else */
-  /*   { */
-  /*     // Request handler */
-  /*     MPI_Request requests[3]; */
-  /*     MPI_Igatherv(x_slice  , slice_size, MPI_DOUBLE, x_vec , recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[0]); */
-  /*     MPI_Igatherv(y_slice  , slice_size, MPI_DOUBLE, y_vec , recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[1]); */
-  /*     MPI_Igatherv(dy_slice , slice_size, MPI_DOUBLE, dy_vec, recvcounts, displs, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[2]); */
-  /*     MPI_Waitall(3, requests, MPI_STATUS_IGNORE); */
-  /*   } */
-  /* } */
-  /* else */
-  /* { */
-  /*   // Non-root proc */
+    // allocate vectors for gathering
+    x_vec = (double *)malloc(sizeof(double) * (NGRID + 2));
+    y_vec = (double *)malloc(sizeof(double) * (NGRID + 2));
+    dy_vec = (double *)malloc(sizeof(double) * (NGRID + 2));
 
-  /*   if (!BLOCKING) */
-  /*   { */
-  /*     MPI_Gatherv(x_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD); */
-  /*     MPI_Gatherv(y_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD); */
-  /*     MPI_Gatherv(dy_slice, slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD); */
-  /*   } */
-  /*   else */
-  /*   { */
-  /*     // Request handler */
-  /*     MPI_Request requests[3]; */
-  /*     MPI_Igatherv(x_slice  , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[0]); */
-  /*     MPI_Igatherv(y_slice  , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[1]); */
-  /*     MPI_Igatherv(dy_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_Datatype recvtype, 0, MPI_COMM_WORLD, &requests[2]); */
-  /*     MPI_Waitall(3, requests, MPI_STATUS_IGNORE); */
-  /*   } */
-  /* } */
+    // define counts of recvs
+    int recv_counts[numproc];
+    // define displacemets
+    int displs[numproc];
+    // set values of recv_counts and displs
+    for (int rank_iter = 0; rank_iter < numproc; rank_iter++)
+    {
+      recv_counts[rank_iter] = slice_size;
+      displs[rank_iter] = rank_iter * slice_size + 1;
+    }
+    if (!BLOCKING)
+    {
+      printf("[Root]: blocking gather-recv-x\n");
+      MPI_Gatherv(x_slice , slice_size, MPI_DOUBLE, x_vec , recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      printf("[Root]: blocking gather-recv-y\n");
+      MPI_Gatherv(y_slice , slice_size, MPI_DOUBLE, y_vec , recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      printf("[Root]: blocking gather-recv-dy\n");
+      MPI_Gatherv(dy_slice, slice_size, MPI_DOUBLE, dy_vec, recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      printf("[Root]: blocking gather-recv complete\n");
+    }
+    else
+    {
+      // Request handler
+      MPI_Request requests[3];
+      printf("[Root]: non-blocking gather-recv-x\n");
+      MPI_Igatherv(x_slice  , slice_size, MPI_DOUBLE, x_vec , recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[0]);
+      printf("[Root]: non-blocking gather-recv-y\n");
+      MPI_Igatherv(y_slice  , slice_size, MPI_DOUBLE, y_vec , recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[1]);
+      printf("[Root]: non-blocking gather-recv-dy\n");
+      MPI_Igatherv(dy_slice , slice_size, MPI_DOUBLE, dy_vec, recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[2]);
+      MPI_Waitall(3, requests, MPI_STATUS_IGNORE);
+      printf("[Root]: non-blocking gather-recv complete\n");
+    }
+
+    print_y_data(NGRID, x_vec, y_vec, dy_vec);
+
+    // Free final data arrays
+    free(x_vec);
+    free(y_vec);
+    free(dy_vec);
+
+  }
+  else
+  {
+    // Non-root proc
+
+    if (!BLOCKING)
+    {
+      printf("[%d]: blocking gather-send-x\n", rank);
+      MPI_Gatherv(x_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      printf("[%d]: blocking gather-send-y\n", rank);
+      MPI_Gatherv(y_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      printf("[%d]: blocking gather-send-dy\n", rank);
+      MPI_Gatherv(dy_slice, slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      printf("[%d]: blocking gather-send complete\n", rank);
+    }
+    else
+    {
+      // Request handler
+      MPI_Request requests[3];
+      printf("[%d]: non-blocking gather-x\n", rank);
+      MPI_Igatherv(x_slice  , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[0]);
+      printf("[%d]: non-blocking gather-y\n", rank);
+      MPI_Igatherv(y_slice  , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[1]);
+      printf("[%d]: non-blocking gather-dy\n", rank);
+      MPI_Igatherv(dy_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[2]);
+      MPI_Waitall(3, requests, MPI_STATUS_IGNORE);
+      printf("[%d]: non-blocking gather-send complete\n", rank);
+    }
+  }
 
   // Free proc slice arrays
   free(x_slice);
