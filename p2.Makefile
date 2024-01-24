@@ -8,5 +8,8 @@ p2: $(SRC)
 serial: p2_serial.c
 	mpicc -lm -O3 -o p2_serial p2_serial.c p2_func.c
 
+run: p2
+	prun ./p2 100 0 0
+
 clean:
 	rm p2
