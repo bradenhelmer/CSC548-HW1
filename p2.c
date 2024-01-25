@@ -21,31 +21,25 @@ double fn(double);
 void print_y_data(int, double *, double *, double *);
 int main(int, char **);
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 
   // Argument Collection
   int NGRID;
   int BLOCKING;
   int GATHER_T;
-  if (argc > 3)
-  {
+  if (argc > 3) {
     NGRID = atoi(argv[1]);
     BLOCKING = atoi(argv[2]);
     GATHER_T = atoi(argv[3]);
-    if (!(BLOCKING == 0 || BLOCKING == 1))
-    {
+    if (!(BLOCKING == 0 || BLOCKING == 1)) {
       printf("Blocking value must be 0 or 1\n");
       exit(0);
     }
-    if (!(GATHER_T == 0 || GATHER_T == 1))
-    {
+    if (!(GATHER_T == 0 || GATHER_T == 1)) {
       printf("Gather type value must be 0 or 1\n");
       exit(0);
     }
-  }
-  else
-  {
+  } else {
     printf("Please specify grid points, blocking, and gather type values.\n");
     exit(0);
   }
@@ -70,7 +64,7 @@ int main(int argc, char *argv[])
   slice_size = NGRID / numproc;
   x_slice = (double *)malloc(sizeof(double) * slice_size);
   // Allocate room for the boundaries
-  y_slice = (double *)malloc(sizeof(double) * slice_size + 2);
+  y_slice = (double *)malloc(sizeof(double) * (slice_size + 2));
 
   // Min and max values for domain slices.
   slice_min = rank * slice_size + 1;
@@ -81,8 +75,7 @@ int main(int argc, char *argv[])
 
   // Construct domain and function slice values
   int loop_idx;
-  for (loop_idx = slice_min; loop_idx <= slice_max; loop_idx++)
-  {
+  for (loop_idx = slice_min; loop_idx <= slice_max; loop_idx++) {
     // Since the slice values are different for each process, we need calcualte
     // the actual slice index relative to the rank.
     int actual_index = loop_idx - (rank * slice_size) - 1;
@@ -136,24 +129,24 @@ int main(int argc, char *argv[])
   // Non-blocking sends
   else {
     if (rank < (numproc - 1)) {
-	  MPI_Request requests[2];
+      MPI_Request requests[2];
       // Forward send
       MPI_Isend(y_slice + slice_size, 1, MPI_DOUBLE, rank + 1, 0,
                 MPI_COMM_WORLD, &requests[0]);
       // Receive from next
       MPI_Irecv(y_slice + slice_size + 1, 1, MPI_DOUBLE, rank + 1, 0,
                 MPI_COMM_WORLD, &requests[1]);
-	  MPI_Waitall(2, requests, MPI_STATUS_IGNORE);
+      MPI_Waitall(2, requests, MPI_STATUS_IGNORE);
     }
     if (rank > ROOTPROC) {
-	  MPI_Request requests[2];
+      MPI_Request requests[2];
       // Backward Send
       MPI_Isend(y_slice + 1, 1, MPI_DOUBLE, rank - 1, 0, MPI_COMM_WORLD,
                 &requests[0]);
       // Receive from previous
       MPI_Irecv(y_slice + slice_size + 1, 1, MPI_DOUBLE, rank - 1, 0,
                 MPI_COMM_WORLD, &requests[1]);
-	  MPI_Waitall(2, requests, MPI_STATUS_IGNORE);
+      MPI_Waitall(2, requests, MPI_STATUS_IGNORE);
     }
   }
 
@@ -161,7 +154,8 @@ int main(int argc, char *argv[])
   // ~~~~~~~~~~~~~~~~~~~~~~~
   double dx = x_slice[1] - x_slice[0];
   for (loop_idx = 0; loop_idx < slice_size; loop_idx++) {
-	dy_slice[loop_idx] = (y_slice[loop_idx + 2] - y_slice[loop_idx]) / (2.0 * dx);
+    dy_slice[loop_idx] =
+        (y_slice[loop_idx + 2] - y_slice[loop_idx]) / (2.0 * dx);
   }
 
   // GATHERING CODE HERE FOR ROOT PROC
@@ -169,8 +163,7 @@ int main(int argc, char *argv[])
   // Declare full grid arrays to be gathered from proc 0
   double *x_vec, *y_vec, *dy_vec;
 
-  if (rank == 0)
-  {
+  if (rank == 0) {
     // Root proc
 
     // allocate vectors for gathering
@@ -183,47 +176,46 @@ int main(int argc, char *argv[])
     // define displacemets
     int displs[numproc];
     // set values of recv_counts and displs
-    for (int rank_iter = 0; rank_iter < numproc; rank_iter++)
-    {
+    for (int rank_iter = 0; rank_iter < numproc; rank_iter++) {
       recv_counts[rank_iter] = slice_size;
       displs[rank_iter] = rank_iter * slice_size + 1;
     }
-    if (!BLOCKING)
-    {
+    if (!BLOCKING) {
       printf("[Root]: blocking gather-recv-x\n");
-      MPI_Gatherv(x_slice , slice_size, MPI_DOUBLE, x_vec , recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      for (size_t i = 0; i < NGRID; i++)
-      {
+      MPI_Gatherv(x_slice, slice_size, MPI_DOUBLE, x_vec, recv_counts, displs,
+                  MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      for (size_t i = 0; i < NGRID; i++) {
         printf("%lf, ", x_vec[i]);
       }
-        printf("\n");
-      
+      printf("\n");
+
       printf("[Root]: blocking gather-recv-y\n");
-      MPI_Gatherv(y_slice , slice_size, MPI_DOUBLE, y_vec , recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      for (size_t i = 0; i < NGRID; i++)
-      {
+      MPI_Gatherv(y_slice, slice_size, MPI_DOUBLE, y_vec, recv_counts, displs,
+                  MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      for (size_t i = 0; i < NGRID; i++) {
         printf("%lf, ", y_vec[i]);
       }
-        printf("\n");
+      printf("\n");
       printf("[Root]: blocking gather-recv-dy\n");
-      MPI_Gatherv(dy_slice, slice_size, MPI_DOUBLE, dy_vec, recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      for (size_t i = 0; i < NGRID; i++)
-      {
+      MPI_Gatherv(dy_slice, slice_size, MPI_DOUBLE, dy_vec, recv_counts, displs,
+                  MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      for (size_t i = 0; i < NGRID; i++) {
         printf("%lf, ", dy_vec[i]);
       }
-        printf("\n");
+      printf("\n");
       printf("[Root]: blocking gather-recv complete\n");
-    }
-    else
-    {
+    } else {
       // Request handler
       MPI_Request requests[3];
       printf("[Root]: non-blocking gather-recv-x\n");
-      MPI_Igatherv(x_slice  , slice_size, MPI_DOUBLE, x_vec , recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[0]);
+      MPI_Igatherv(x_slice, slice_size, MPI_DOUBLE, x_vec, recv_counts, displs,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[0]);
       printf("[Root]: non-blocking gather-recv-y\n");
-      MPI_Igatherv(y_slice  , slice_size, MPI_DOUBLE, y_vec , recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[1]);
+      MPI_Igatherv(y_slice, slice_size, MPI_DOUBLE, y_vec, recv_counts, displs,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[1]);
       printf("[Root]: non-blocking gather-recv-dy\n");
-      MPI_Igatherv(dy_slice , slice_size, MPI_DOUBLE, dy_vec, recv_counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[2]);
+      MPI_Igatherv(dy_slice, slice_size, MPI_DOUBLE, dy_vec, recv_counts,
+                   displs, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[2]);
       MPI_Waitall(3, requests, MPI_STATUS_IGNORE);
       printf("[Root]: non-blocking gather-recv complete\n");
     }
@@ -235,31 +227,32 @@ int main(int argc, char *argv[])
     free(y_vec);
     free(dy_vec);
 
-  }
-  else
-  {
+  } else {
     // Non-root proc
 
-    if (!BLOCKING)
-    {
+    if (!BLOCKING) {
       printf("[%d]: blocking gather-send-x\n", rank);
-      MPI_Gatherv(x_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Gatherv(x_slice, slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE,
+                  0, MPI_COMM_WORLD);
       printf("[%d]: blocking gather-send-y\n", rank);
-      MPI_Gatherv(y_slice + 1, slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Gatherv(y_slice + 1, slice_size, MPI_DOUBLE, NULL, NULL, NULL,
+                  MPI_DOUBLE, 0, MPI_COMM_WORLD);
       printf("[%d]: blocking gather-send-dy\n", rank);
-      MPI_Gatherv(dy_slice, slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Gatherv(dy_slice, slice_size, MPI_DOUBLE, NULL, NULL, NULL,
+                  MPI_DOUBLE, 0, MPI_COMM_WORLD);
       printf("[%d]: blocking gather-send complete\n", rank);
-    }
-    else
-    {
+    } else {
       // Request handler
       MPI_Request requests[3];
       printf("[%d]: non-blocking gather-x\n", rank);
-      MPI_Igatherv(x_slice  , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[0]);
+      MPI_Igatherv(x_slice, slice_size, MPI_DOUBLE, NULL, NULL, NULL,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[0]);
       printf("[%d]: non-blocking gather-y\n", rank);
-      MPI_Igatherv(y_slice + 1, slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[1]);
+      MPI_Igatherv(y_slice + 1, slice_size, MPI_DOUBLE, NULL, NULL, NULL,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[1]);
       printf("[%d]: non-blocking gather-dy\n", rank);
-      MPI_Igatherv(dy_slice , slice_size, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[2]);
+      MPI_Igatherv(dy_slice, slice_size, MPI_DOUBLE, NULL, NULL, NULL,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD, &requests[2]);
       MPI_Waitall(3, requests, MPI_STATUS_IGNORE);
       printf("[%d]: non-blocking gather-send complete\n", rank);
     }
@@ -275,8 +268,7 @@ int main(int argc, char *argv[])
 }
 
 // prints out the y and its dy to a file
-void print_y_data(int np, double *x, double *y, double *dydx)
-{
+void print_y_data(int np, double *x, double *y, double *dydx) {
   int i;
 
   char filename[1024];
@@ -284,8 +276,7 @@ void print_y_data(int np, double *x, double *y, double *dydx)
 
   FILE *fp = fopen(filename, "w");
 
-  for (i = 0; i < np; i++)
-  {
+  for (i = 0; i < np; i++) {
     fprintf(fp, "%f %f %f\n", x[i], y[i], dydx[i]);
   }
 
