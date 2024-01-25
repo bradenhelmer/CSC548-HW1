@@ -12,4 +12,4 @@ run: p2
 	prun ./p2 100 0 0
 
 clean:
-	rm -f p2 *.dat
+	rm -f p2 *.dat *.png
