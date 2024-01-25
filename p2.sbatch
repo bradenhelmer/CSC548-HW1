@@ -8,4 +8,3 @@
 #SBATCH -p rome            # Specify the broadwell queue
 
 make -f p2.Makefile
-prun ./p2 2 0 0
