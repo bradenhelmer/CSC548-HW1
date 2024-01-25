@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
 /* first grid point */
 #define XI 1.0
 /* last grid point */
@@ -120,18 +121,54 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
+<<<<<<< Updated upstream
 // prints out the function and its derivative to a file
 void print_function_data(int np, double *x, double *y, double *dydx) {
+=======
+// prints out the y and its dy to a file
+void print_y_data(int np, double *x, double *y, double *dydx) {
+  //
+>>>>>>> Stashed changes
   int i;
+  
 
+  //
   char filename[1024];
+  //printf("the filename is %d\n", filename[1024]);
+  //char * commandsForGnuplot[] = {"set title \"%d\"", np, "plot '%d'", filename};
+  
+  
+  //
+  //printf("Printing the filename");
   sprintf(filename, "fn-%d.dat", np);
+  printf("printing file name %s \n", filename);
+  
+  char * commandsForGnuplot[] = {"set title \"p2\"", "plot 'fn-100.dat'"};
+  
+  printf("printing commands for gnuplot: %s\n", commandsForGnuplot[1]);
 
+  //
   FILE *fp = fopen(filename, "w");
+  
+  
+  //Opens a gnuplot file to be displayed
+  FILE * gnuplotPipe = popen ("gnuplot -persistent", "w");
+
 
   for (i = 0; i < np; i++) {
     fprintf(fp, "%f %f %f\n", x[i], y[i], dydx[i]);
   }
 
+<<<<<<< Updated upstream
   fclose(fp);
 }
+=======
+
+  //Runs the gnuplot commands and displays the grapph
+  for (i=0; i < 2; i++) {
+    fprintf(gnuplotPipe, "%s \n", commandsForGnuplot[i]);
+  }
+  // fclose(fp); 
+  
+}
+>>>>>>> Stashed changes
