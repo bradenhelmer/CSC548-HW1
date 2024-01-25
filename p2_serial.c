@@ -45,7 +45,7 @@ int main (int argc, char *argv[])
 		
 		// Begin serial time record
 		struct timespec start, end;
-		clock_gettime(CLOCK_REALTIME, &start); 
+		clock_gettime(CLOCK_MONOTONIC, &start); 
         //construct grid
         for (i = 1; i <= NGRID ; i++)
         {
@@ -64,7 +64,6 @@ int main (int argc, char *argv[])
         for( i = imin; i <= imax; i++ )
         {
                 yc[i] = fn(xc[i]);
-        }
 
         //set boundary values
         yc[imin - 1] = 0.0;
@@ -86,8 +85,8 @@ int main (int argc, char *argv[])
                 dyc[i] = (yc[i + 1] - yc[i - 1])/(2.0 * dx);
         }
 		// Record end serial time
-		clock_gettime(CLOCK_REALTIME, &end);
-		fprintf(stdout, "%f");
+		clock_gettime(CLOCK_MONOTONIC, &end);
+		fprintf(stdout, "Serial time for %d gridpoints: %f\n", NGRID, (end.tv_nsec - start.tv_nsec)/1e9);
 
         print_function_data(NGRID, &xc[1], &yc[1], &dyc[1]);
 

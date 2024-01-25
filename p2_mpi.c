@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 /* first grid point */
 #define XI 1.0
 /* last grid point */
@@ -69,9 +70,11 @@ int main(int argc, char *argv[]) {
   // Min and max values for domain slices.
   slice_min = rank * slice_size + 1;
   slice_max = (rank + 1) * slice_size;
-
+  struct timespec start, end;
   // Core calculations
   // -----------------
+  if (rank == ROOTPROC)
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
   // Construct domain and function slice values
   int loop_idx;
@@ -292,7 +295,12 @@ int main(int argc, char *argv[]) {
   }
 
   if (rank == ROOTPROC) {
-    print_y_data(NGRID, x_vec, y_vec, dy_vec);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    printf("%s / %s time for %d cores: %f\n",
+           BLOCKING ? "Non-Blocking" : "Blocking",
+           GATHER_T ? "Manual Gather" : "MPI_Gather", numproc,
+           (end.tv_nsec - start.tv_nsec) / 1e9);
+    /* print_y_data(NGRID, x_vec, y_vec, dy_vec); */
     free(x_vec);
     free(y_vec);
     free(dy_vec);
