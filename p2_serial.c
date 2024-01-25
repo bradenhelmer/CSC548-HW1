@@ -1,6 +1,8 @@
+// bthelmer Braden T Helmer
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 
 /* first grid point */
 #define   XI              1.0
@@ -40,7 +42,10 @@ int main (int argc, char *argv[])
 
         imin = 1;
         imax = NGRID;
-
+		
+		// Begin serial time record
+		struct timespec start, end;
+		clock_gettime(CLOCK_REALTIME, &start); 
         //construct grid
         for (i = 1; i <= NGRID ; i++)
         {
@@ -80,6 +85,9 @@ int main (int argc, char *argv[])
         {
                 dyc[i] = (yc[i + 1] - yc[i - 1])/(2.0 * dx);
         }
+		// Record end serial time
+		clock_gettime(CLOCK_REALTIME, &end);
+		fprintf(stdout, "%f");
 
         print_function_data(NGRID, &xc[1], &yc[1], &dyc[1]);
 

@@ -1,4 +1,7 @@
 #!/bin/bash
+# bthelmer Braden T Helmer
+# hkambha Harish Kambhampaty
+# cwkavana Colin W Kavanaugh
 
 #SBATCH -J CSC548_mpi_hello     # Job name
 #SBATCH -o job.%j.out           # Name of stdout output file (%j expands to jobId)

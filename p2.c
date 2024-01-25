@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 /* first grid point */
 #define XI 1.0
 /* last grid point */
@@ -62,7 +61,7 @@ int main(int argc, char *argv[]) {
   int slice_size, slice_min, slice_max;
   double *x_slice, *y_slice, *dy_slice;
   // Slice size and allocations
-  slice_size = NGRID / numproc;
+  slice_size = ceil(((double)NGRID / numproc));
   x_slice = (double *)malloc(sizeof(double) * slice_size);
   // Allocate room for the boundaries
   y_slice = (double *)malloc(sizeof(double) * (slice_size + 2));
@@ -166,9 +165,9 @@ int main(int argc, char *argv[]) {
 
   // allocate vectors for gathering
   if (rank == ROOTPROC) {
-    x_vec = (double *)malloc(sizeof(double) * (NGRID));
-    y_vec = (double *)malloc(sizeof(double) * (NGRID));
-    dy_vec = (double *)malloc(sizeof(double) * (NGRID));
+    x_vec = (double *)malloc(sizeof(double) * (slice_size * numproc));
+    y_vec = (double *)malloc(sizeof(double) * (slice_size * numproc));
+    dy_vec = (double *)malloc(sizeof(double) * (slice_size * numproc));
   }
 
   // MPI_Gather

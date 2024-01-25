@@ -1,3 +1,6 @@
+# bthelmer Braden T Helmer
+# hkambha Harish Kambhampaty
+# cwkavana Colin W Kavanaugh
 SRC := p2.c p2_func.c
 
 all: clean p2
