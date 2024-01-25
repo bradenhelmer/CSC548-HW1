@@ -7,6 +7,7 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* first grid point */
 #define XI 1.0
@@ -163,15 +164,17 @@ int main(int argc, char *argv[]) {
   // Declare full grid arrays to be gathered from proc 0
   double *x_vec, *y_vec, *dy_vec;
 
+  // allocate vectors for gathering
+  if (rank == ROOTPROC) {
+    x_vec = (double *)malloc(sizeof(double) * (NGRID));
+    y_vec = (double *)malloc(sizeof(double) * (NGRID));
+    dy_vec = (double *)malloc(sizeof(double) * (NGRID));
+  }
+
   // MPI_Gather
   if (!GATHER_T) {
-
     // Root proc
     if (rank == ROOTPROC) {
-      // allocate vectors for gathering
-      x_vec = (double *)malloc(sizeof(double) * (NGRID));
-      y_vec = (double *)malloc(sizeof(double) * (NGRID));
-      dy_vec = (double *)malloc(sizeof(double) * (NGRID));
 
       // define counts of recvs
       int recv_counts[numproc];
@@ -202,8 +205,6 @@ int main(int argc, char *argv[]) {
         MPI_Waitall(3, requests, MPI_STATUS_IGNORE);
       }
 
-      print_y_data(NGRID, x_vec, y_vec, dy_vec);
-
     } else {
       // Non-root proc
 
@@ -232,26 +233,67 @@ int main(int argc, char *argv[]) {
   else {
     // Root proc
     if (rank == ROOTPROC) {
+
+      // Copy root slice into vec
+      memcpy(x_vec, x_slice, sizeof(double) * slice_size);
+      memcpy(y_vec, y_slice + 1, sizeof(double) * slice_size);
+      memcpy(dy_vec, dy_slice, sizeof(double) * slice_size);
+
       // Blocking manual gather
       if (!BLOCKING) {
-
+        // Loop over remaining processes
+        for (loop_idx = 1; loop_idx < numproc; loop_idx++) {
+          const u_int16_t offset = loop_idx * slice_size;
+          MPI_Recv(x_vec + offset, slice_size, MPI_DOUBLE, loop_idx, 0,
+                   MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Recv(y_vec + offset, slice_size, MPI_DOUBLE, loop_idx, 0,
+                   MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Recv(dy_vec + offset, slice_size, MPI_DOUBLE, loop_idx, 0,
+                   MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        }
       }
       // Non blocking manual gather
       else {
+        const u_int8_t req_count = 3 * (numproc - 1);
+        MPI_Request requests[req_count];
+        for (loop_idx = 1; loop_idx < numproc; loop_idx++) {
+          const u_int8_t actual_index = (loop_idx - 1) * 3;
+          const u_int16_t offset = loop_idx * slice_size;
+          MPI_Irecv(x_vec + offset, slice_size, MPI_DOUBLE, loop_idx, 0,
+                    MPI_COMM_WORLD, &requests[actual_index]);
+          MPI_Irecv(y_vec + offset, slice_size, MPI_DOUBLE, loop_idx, 0,
+                    MPI_COMM_WORLD, &requests[actual_index + 1]);
+          MPI_Irecv(dy_vec + offset, slice_size, MPI_DOUBLE, loop_idx, 0,
+                    MPI_COMM_WORLD, &requests[actual_index + 2]);
+        }
+        MPI_Waitall(req_count, requests, MPI_STATUS_IGNORE);
       }
     }
     // Non root proc
     else {
       // Blocking manual send
       if (!BLOCKING) {
+        MPI_Send(x_slice, slice_size, MPI_DOUBLE, ROOTPROC, 0, MPI_COMM_WORLD);
+        MPI_Send(y_slice + 1, slice_size, MPI_DOUBLE, ROOTPROC, 0,
+                 MPI_COMM_WORLD);
+        MPI_Send(dy_slice, slice_size, MPI_DOUBLE, ROOTPROC, 0, MPI_COMM_WORLD);
       }
       // Non blocking manual send
       else {
+        MPI_Request requests[3];
+        MPI_Isend(x_slice, slice_size, MPI_DOUBLE, ROOTPROC, 0, MPI_COMM_WORLD,
+                  &requests[0]);
+        MPI_Isend(y_slice + 1, slice_size, MPI_DOUBLE, ROOTPROC, 0,
+                  MPI_COMM_WORLD, &requests[1]);
+        MPI_Isend(dy_slice, slice_size, MPI_DOUBLE, ROOTPROC, 0, MPI_COMM_WORLD,
+                  &requests[2]);
+        MPI_Waitall(3, requests, MPI_STATUS_IGNORE);
       }
     }
   }
 
   if (rank == ROOTPROC) {
+    print_y_data(NGRID, x_vec, y_vec, dy_vec);
     free(x_vec);
     free(y_vec);
     free(dy_vec);
