@@ -1,6 +1,6 @@
 // bthelmer Braden T Helmer
 // hkambha Harish Kambhampaty
-//
+// cwkavana Colin W Kavanaugh
 //
 // CSC 548 Parallel Systems HW1 Problem 2
 #include <math.h>
